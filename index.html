@@ -1,0 +1,679 @@
+<html lang="en-us"><head>
+		<!-- Google Analytics -->
+		<script type="text/javascript" async="" src="https://www.google-analytics.com/analytics.js"></script><script type="text/javascript" async="" src="https://www.googletagmanager.com/gtag/js?id=G-P8TC49NYRS&amp;l=dataLayer&amp;cx=c&amp;gtm=457e54l1za200&amp;tag_exp=102803279~102887800~102926062~103027016~103051953~103055465~103077950~103106314~103106316"></script><script async="" src="https://www.googletagmanager.com/gtag/js?id=UA-176958071-1"></script>
+		<script>
+			window.dataLayer = window.dataLayer || [];
+			function gtag(){dataLayer.push(arguments);}
+			gtag('js', new Date());
+			
+			gtag('config', 'UA-176958071-1');
+		</script>
+		<!-- /Google Analytics -->
+		
+		<meta charset="utf-8">
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>SHADERed</title>
+		<style>
+			canvas.emscripten { border: 0px none; background-color: black; }
+			* { margin: 0; padding: 0;}
+
+			body, html { height:100%; }
+
+			#canvas {
+				position:absolute;
+				width: 100%;
+				height: 100%;
+			}
+
+			.loader,
+			.loader:before,
+			.loader:after {
+				background: #ffffff;
+				-webkit-animation: load1 1s infinite ease-in-out;
+				animation: load1 1s infinite ease-in-out;
+				width: 1em;
+				height: 4em;
+			}
+			.loader {
+				color: #ffffff;
+				text-indent: -9999em;
+				font-size: 11px;
+				-webkit-transform: translateZ(0);
+				-ms-transform: translateZ(0);
+				transform: translateZ(0);
+				-webkit-animation-delay: -0.16s;
+				animation-delay: -0.16s;
+
+				position: absolute;
+				top: 50%;
+				left: 50%;
+				transform: translate(-50%, -50%);
+				-ms-transform: translate(-50%, -50%);
+				-webkit-transform: translate(-50%, -50%);
+			}
+			.loader:before,
+			.loader:after {
+				position: absolute;
+				top: 0;
+				content: '';
+			}
+			.loader:before {
+				left: -1.5em;
+				-webkit-animation-delay: -0.32s;
+				animation-delay: -0.32s;
+			}
+			.loader:after {
+				left: 1.5em;
+			}
+			@-webkit-keyframes load1 {
+				0%,
+				80%,
+				100% {
+					box-shadow: 0 0;
+					height: 4em;
+				}
+				40% {
+					box-shadow: 0 -2em;
+					height: 5em;
+				}
+			}
+			@keyframes load1 {
+				0%,
+				80%,
+				100% {
+					box-shadow: 0 0;
+					height: 4em;
+				}
+				40% {
+					box-shadow: 0 -2em;
+					height: 5em;
+				}
+			}
+
+			.sponsors {
+				position: absolute;
+				bottom: 0;
+				left: 50%;
+				transform: translate(-50%, 0%);
+				-ms-transform: translate(-50%, 0%);
+				-webkit-transform: translate(-50%, 0%);
+				color: white;
+			}
+			.sponsors-text {
+				color: white;
+				font-size: 24px;
+				font: 'Arial';
+				weight: 400;
+				padding-bottom: 2.5rem;
+			}
+			.sponsors-table {
+				width: 100%;
+				padding: 25px;
+			}
+			tr > td { 
+				padding-left: 45px;
+				padding-right: 45px;
+			}
+		</style>
+		<link rel="icon" type="image/png" href="/assets/img/icon.png">
+	</head>
+	<body>
+		<canvas class="emscripten" id="canvas" oncontextmenu="event.preventDefault()" tabindex="-1" width="1061" height="962" style="cursor: default;"></canvas>
+		
+		<div class="loader" id="loader" hidden="">Loading...</div>
+
+
+		<div class="sponsors" id="sponsors" hidden="">
+			<table class="sponsors-table">
+				<tbody><tr>
+					<th colspan="2">
+						<p class="sponsors-text">SPONSORS</p>
+					</th>
+				</tr>
+				<tr>
+					<td>
+						<a href="https://www.embark-studios.com/">
+							<img src="/assets/img/sponsors/embark_logo_white_S.png" height="85">
+						</a>
+					</td>
+					<td>
+						<a href="https://www.digitalocean.com/?utm_medium=opensource&amp;utm_source=SHADERed">
+							<img src="/assets/img/sponsors/do-white.png">
+						</a>
+					</td>
+				</tr>
+			</tbody></table>
+			
+			
+		</div>
+
+		<input type="file" style="display: none;" id="fileDialog">
+
+		<script type="text/javascript">
+			var __shadered_username = "";
+			var __shadered_can_upload = 1;
+			var loaderElement = document.getElementById('loader');
+			var sponsorsElement = document.getElementById('sponsors');
+			var fileDialogElement = document.getElementById('fileDialog');
+			
+			var Module = {
+				preRun: [
+					function () {
+						FS.mkdir("/temp");
+						FS.mkdir("/project/shaders");
+						FS.mkdir("/project/textures");
+						FS.mkdir("/project/buffers");
+						FS.mkdir("/project/opt");
+						FS.mkdir("/project/opt/shaders");
+					}
+				],
+				postRun: [],
+				print: (function() {
+					return function(text) {
+						if (arguments.length > 1)
+							text = Array.prototype.slice.call(arguments).join(' ');
+						console.log(text);
+					};
+				})(),
+				printErr: function(text) {
+					if (arguments.length > 1)
+						text = Array.prototype.slice.call(arguments).join(' ');
+					console.error(text);
+				},
+				canvas: (function() {
+					var canvas = document.getElementById('canvas');
+
+					// As a default initial behavior, pop up an alert when webgl context is lost. To make your
+					// application robust, you may want to override this behavior before shipping!
+					// See http://www.khronos.org/registry/webgl/specs/latest/1.0/#5.15.2
+					canvas.addEventListener("webglcontextlost", function(e) { alert('WebGL context lost. You will need to reload the page.'); e.preventDefault(); }, false);
+
+					return canvas;
+				})(),
+				setStatus: function(text) {
+					if (!Module.setStatus.last) Module.setStatus.last = { time: Date.now(), text: '' };
+					if (text === Module.setStatus.last.text) return;
+					var m = text.match(/([^(]+)\((\d+(\.\d+)?)\/(\d+)\)/);
+					var now = Date.now();
+					if (m && now - Module.setStatus.last.time < 30)
+						return; // if this is a progress update, skip it if too soon
+					if (!m && !text) {
+						loaderElement.hidden = true;
+						sponsorsElement.hidden = true;
+					}
+					Module.setStatus.last.time = now;
+					Module.setStatus.last.text = text;
+				},
+				totalDependencies: 0,
+				monitorRunDependencies: function(left) {
+					this.totalDependencies = Math.max(this.totalDependencies, left);
+					Module.setStatus(left ? 'Preparing... (' + (this.totalDependencies-left) + '/' + this.totalDependencies + ')' : 'All downloads complete.');
+				}
+			};
+		
+			Module.setStatus('Downloading...');
+			window.onerror = function() {
+				Module.setStatus('Exception thrown, see JavaScript console');
+				Module.setStatus = function(text) {
+					if (text)
+						Module.printErr('[post-exception status] ' + text);
+				};
+			};
+
+
+
+			/************ HELPER FUNCTIONS ************/
+			function handleTextureFile(file) {
+				if (file.size > 1*1024*1024) {
+					alert("File is too large. Files must be smaller than 1MB.");
+					return false;
+				}
+
+				// setting up the reader
+				var reader = new FileReader();
+				reader.fileName = file.name;
+				reader.readAsArrayBuffer(file);
+
+				// here we tell the reader what to do when it's done reading...
+				reader.onload = readerEvent => {
+					var fname = readerEvent.target.fileName;
+
+					var content = readerEvent.target.result; // this is the content!
+					var uint8View = new Uint8Array(content);
+
+					var stream = Module.FS.open('/project/textures/' + fname, 'w');
+					Module.FS.write(stream, uint8View, 0, content.byteLength, 0);
+					Module.FS.close(stream);
+					Module.engine_AddTexture('textures/' + fname);
+				}
+			}
+			function handleSwitchTextureFile(file) {
+				if (file.size > 1*1024*1024) {
+					alert("File is too large. Files must be smaller than 1MB.");
+					return false;
+				}
+
+				// setting up the reader
+				var reader = new FileReader();
+				reader.fileName = file.name;
+				reader.readAsArrayBuffer(file);
+
+				// here we tell the reader what to do when it's done reading...
+				reader.onload = readerEvent => {
+					var fname = readerEvent.target.fileName;
+
+					var content = readerEvent.target.result; // this is the content!
+					var uint8View = new Uint8Array(content);
+
+					var stream = Module.FS.open('/project/textures/' + fname, 'w');
+					Module.FS.write(stream, uint8View, 0, content.byteLength, 0);
+					Module.FS.close(stream);
+					Module.engine_ReloadTexture(__shadered_item, 'textures/' + fname);
+				}
+			}
+			function handleCubeFile(file) {
+				if (file.size > 1*1024*1024) {
+					alert("File is too large. Files must be smaller than 1MB.");
+					return false;
+				}
+
+				// setting up the reader
+				var reader = new FileReader();
+				reader.fileName = file.name;
+				reader.readAsArrayBuffer(file);
+
+				// here we tell the reader what to do when it's done reading...
+				reader.onload = readerEvent => {
+					var fname = readerEvent.target.fileName;
+
+					var content = readerEvent.target.result; // this is the content!
+					var uint8View = new Uint8Array(content);
+
+					var stream = Module.FS.open('/project/textures/' + fname, 'w');
+					Module.FS.write(stream, uint8View, 0, content.byteLength, 0);
+					Module.FS.close(stream);
+					Module.engine_SetCubemapFace('textures/' + fname);
+				}
+			}
+			function handleBufferFile(file) {
+				if (file.size > 1*1024*1024) {
+					alert("File is too large. Files must be smaller than 1MB.");
+					return false;
+				}
+
+				// setting up the reader
+				var reader = new FileReader();
+				reader.fileName = file.name;
+				reader.readAsArrayBuffer(file);
+
+				// here we tell the reader what to do when it's done reading...
+				reader.onload = readerEvent => {
+					var fname = readerEvent.target.fileName;
+
+					var content = readerEvent.target.result; // this is the content!
+					var uint8View = new Uint8Array(content);
+
+					var stream = Module.FS.open('/project/buffers/' + fname, 'w');
+					Module.FS.write(stream, uint8View, 0, content.byteLength, 0);
+					Module.FS.close(stream);
+					Module.engine_LoadBufferFromFile(__shadered_item, 'buffers/' + fname, __shadered_item_action);
+					Module.FS.unlink('/project/buffers/' + fname);
+				}
+			}
+			function stopEvents(e) {
+				e.preventDefault();
+				e.stopPropagation();
+				return false;
+			}
+			function fallbackCopyTextToClipboard(text) {
+				var textArea = document.createElement("textarea");
+				textArea.value = text;
+				
+				// Avoid scrolling to bottom
+				textArea.style.top = '0';
+				textArea.style.left = '0';
+				textArea.style.position = 'fixed';
+				textArea.style.display = 'none';
+
+				document.body.appendChild(textArea);
+				textArea.focus();
+				textArea.select();
+
+				try {
+					var successful = document.execCommand('copy');
+				} catch (err) {
+					console.error('Failed to copy content to clipboard', err);
+				}
+
+				document.body.removeChild(textArea);
+			}
+			function base64ToArrayBuffer(base64) {
+				var raw = window.atob(base64);
+				var rawLength = raw.length;
+				var array = new Uint8Array(new ArrayBuffer(rawLength));
+
+				for(i = 0; i < rawLength; i++)
+					array[i] = raw.charCodeAt(i);
+					
+				return array;
+			}
+			
+			
+			/************ SETTINGS DATA ************/
+			var __shadered_workspace = base64ToArrayBuffer("W1dpbmRvd11bRG9ja1NwYWNlV25kXQpQb3M9MCwwClNpemU9MTkyMCw5NjkKQ29sbGFwc2VkPTAKCltXaW5kb3ddWyMjdG9vbGJhcl0KUG9zPTAsMjYKU2l6ZT0zMiw1MwpDb2xsYXBzZWQ9MAoKW1dpbmRvd11bRGVidWcjI0RlZmF1bHRdClBvcz02MCw2MApTaXplPTQwMCw0MDAKQ29sbGFwc2VkPTAKCltXaW5kb3ddW1ByZXZpZXddClBvcz03OTYsMjYKU2l6ZT03OTgsNzQ4CkNvbGxhcHNlZD0wCkRvY2tJZD0weDAwMDAwMDBBLDAKCltXaW5kb3ddW1Bpbm5lZF0KUG9zPTAsNDE4ClNpemU9MjM0LDU1MQpDb2xsYXBzZWQ9MApEb2NrSWQ9MHgwMDAwMDAwNSwxCgpbV2luZG93XVtPdXRwdXRdClBvcz03OTYsNzc2ClNpemU9Nzk4LDE5MwpDb2xsYXBzZWQ9MApEb2NrSWQ9MHgwMDAwMDAwOCwwCgpbV2luZG93XVtPYmplY3RzXQpQb3M9MCwyNgpTaXplPTIzNCwzOTAKQ29sbGFwc2VkPTAKRG9ja0lkPTB4MDAwMDAwMDQsMQoKW1dpbmRvd11bUGlwZWxpbmVdClBvcz0wLDI2ClNpemU9MjM0LDM5MApDb2xsYXBzZWQ9MApEb2NrSWQ9MHgwMDAwMDAwNCwwCgpbV2luZG93XVtQcm9wZXJ0aWVzXQpQb3M9MCw0MTgKU2l6ZT0yMzQsNTUxCkNvbGxhcHNlZD0wCkRvY2tJZD0weDAwMDAwMDA1LDAKCltXaW5kb3ddW1BpeGVsIEluc3BlY3RdClBvcz0xNTk2LDI2ClNpemU9MzI0LDk0MwpDb2xsYXBzZWQ9MApEb2NrSWQ9MHgwMDAwMDAwQywwCgpbV2luZG93XVsjIyNjb2RlX3ZpZXdWUzBdClBvcz0yMzYsMjYKU2l6ZT01NTgsOTQzCkNvbGxhcHNlZD0wCkRvY2tJZD0weDAwMDAwMDAxLDAKCltXaW5kb3ddWyMjI2NvZGVfdmlld1BTMF0KUG9zPTIzNiwyNgpTaXplPTU1OCw5NDMKQ29sbGFwc2VkPTAKRG9ja0lkPTB4MDAwMDAwMDEsMQoKW1dpbmRvd11bRGVsZXRlIyNwdWlfaXRlbV9kZWxldGVdClBvcz02MCw2MApTaXplPTQ0NCwxMzMKQ29sbGFwc2VkPTAKCltXaW5kb3ddW09wdGlvbnNdClBvcz0zNzIsNjAKU2l6ZT0xMDY3LDcwMgpDb2xsYXBzZWQ9MAoKW1dpbmRvd11bVXBsb2FkIHByb2plY3QjI21haW5fdXBsb2FkX3Byb2plY3RdClBvcz05NzgsMzE0ClNpemU9NTk0LDY5MApDb2xsYXBzZWQ9MAoKW1dpbmRvd11bQ3JlYXRlIEl0ZW0jI21haW5fY3JlYXRlX2l0ZW1dClBvcz02NzgsMzE4ClNpemU9NTg4LDMzMwpDb2xsYXBzZWQ9MAoKW1dpbmRvd11bIyMjY29kZV92aWV3VlMxXQpQb3M9Mjg0LDI2ClNpemU9NjczLDg5NQpDb2xsYXBzZWQ9MApEb2NrSWQ9MHgwMDAwMDAwMSwyCgpbV2luZG93XVsjIyNjb2RlX3ZpZXdQUzFdClBvcz0yODQsMjYKU2l6ZT02NzMsODk1CkNvbGxhcHNlZD0wCkRvY2tJZD0weDAwMDAwMDAxLDMKCltXaW5kb3ddWyMjI2NvZGVfdmlld1ZTMl0KUG9zPTI4NCwyNgpTaXplPTY3Myw4OTUKQ29sbGFwc2VkPTAKRG9ja0lkPTB4MDAwMDAwMDEsNQoKW1dpbmRvd11bIyMjY29kZV92aWV3UFMyXQpQb3M9Mjg0LDI2ClNpemU9NjczLDg5NQpDb2xsYXBzZWQ9MApEb2NrSWQ9MHgwMDAwMDAwMSw0CgpbV2luZG93XVtDcmVhdGUgSXRlbSMjcHVpX2NyZWF0ZV9pdGVtXQpQb3M9NzI2LDM4NwpTaXplPTQ3NywxOTQKQ29sbGFwc2VkPTAKCltXaW5kb3ddW1ZhcmlhYmxlIE1hbmFnZXIjI3B1aV9zaGFkZXJfdmFyaWFibGVzXQpQb3M9NTYyLDM1OQpTaXplPTgxMSwyNTAKQ29sbGFwc2VkPTAKCltXaW5kb3ddW0NyZWF0ZSBjdWJlbWFwIyNtYWluX2NyZWF0ZV9jdWJlbWFwXQpQb3M9NzIxLDMzMgpTaXplPTQ3NywzMDUKQ29sbGFwc2VkPTAKCltXaW5kb3ddWyMjI29ianByZXYwXQpQb3M9Mjg0LDI2ClNpemU9NjczLDg5NQpDb2xsYXBzZWQ9MApEb2NrSWQ9MHgwMDAwMDAwMSw2CgpbV2luZG93XVtDcmVhdGUgUlQjI21haW5fY3JlYXRlX3J0XQpQb3M9NzIxLDM5OApTaXplPTQ3NywxNzIKQ29sbGFwc2VkPTAKCltXaW5kb3ddWyMjI2NvZGVfdmlld0NNMF0KUG9zPTI4NCwyNgpTaXplPTgzMCw1NzcKQ29sbGFwc2VkPTAKRG9ja0lkPTB4MDAwMDAwMDksMAoKW1dpbmRvd11bQ3JlYXRlIFNwcml0ZSMjY3JlYXRlX2dvZG90X3Nwcml0ZV0KUG9zPTc0NSwzNDkKU2l6ZT00MzAsMjcwCkNvbGxhcHNlZD0wCgpbV2luZG93XVsjIyNjb2RlX3ZpZXdQUzNdClBvcz02MCw2MApTaXplPTQwMCwzMDAKQ29sbGFwc2VkPTAKCltXaW5kb3ddWyMjI2NvZGVfdmlld1ZTM10KUG9zPTYwLDYwClNpemU9NDAwLDMwMApDb2xsYXBzZWQ9MAoKW1dpbmRvd11bQnJlYWtwb2ludHNdClBvcz03OTYsNzc2ClNpemU9Nzk4LDE5MwpDb2xsYXBzZWQ9MApEb2NrSWQ9MHgwMDAwMDAwOCwxCgpbV2luZG93XVtWYXJpYWJsZXNdClBvcz0xNTk2LDI2ClNpemU9MzI0LDk0MwpDb2xsYXBzZWQ9MApEb2NrSWQ9MHgwMDAwMDAwQywxCgpbV2luZG93XVtGdW5jdGlvbiBzdGFja10KUG9zPTc5Niw3NzYKU2l6ZT03OTgsMTkzCkNvbGxhcHNlZD0wCkRvY2tJZD0weDAwMDAwMDA4LDIKCltXaW5kb3ddW1dhdGNoZXNdClBvcz0xNTk2LDI2ClNpemU9MzI0LDk0MwpDb2xsYXBzZWQ9MApEb2NrSWQ9MHgwMDAwMDAwQywyCgpbV2luZG93XVtJbW1lZGlhdGVdClBvcz03OTYsNzc2ClNpemU9Nzk4LDE5MwpDb2xsYXBzZWQ9MApEb2NrSWQ9MHgwMDAwMDAwOCwzCgpbRG9ja2luZ11bRGF0YV0KRG9ja1NwYWNlICAgICAgICAgICBJRD0weDE2MEIxODlGIFdpbmRvdz0weDkxMkJBMTE0IFBvcz0wLDI2IFNpemU9MTkyMCw5NDMgU3BsaXQ9WAogIERvY2tOb2RlICAgICAgICAgIElEPTB4MDAwMDAwMEIgUGFyZW50PTB4MTYwQjE4OUYgU2l6ZVJlZj0xNTk0LDk0MyBTcGxpdD1YCiAgICBEb2NrTm9kZSAgICAgICAgSUQ9MHgwMDAwMDAwMiBQYXJlbnQ9MHgwMDAwMDAwQiBTaXplUmVmPTI4Miw5NDMgU3BsaXQ9WSBTZWxlY3RlZD0weEM4OUUzMjE3CiAgICAgIERvY2tOb2RlICAgICAgSUQ9MHgwMDAwMDAwNCBQYXJlbnQ9MHgwMDAwMDAwMiBTaXplUmVmPTIzOSwzOTAgU2VsZWN0ZWQ9MHg4NDhBQkI4RgogICAgICBEb2NrTm9kZSAgICAgIElEPTB4MDAwMDAwMDUgUGFyZW50PTB4MDAwMDAwMDIgU2l6ZVJlZj0yMzksNTUxIFNlbGVjdGVkPTB4Qzg5RTMyMTcKICAgIERvY2tOb2RlICAgICAgICBJRD0weDAwMDAwMDAzIFBhcmVudD0weDAwMDAwMDBCIFNpemVSZWY9MTYzNiw5NDMgU3BsaXQ9WAogICAgICBEb2NrTm9kZSAgICAgIElEPTB4MDAwMDAwMDEgUGFyZW50PTB4MDAwMDAwMDMgU2l6ZVJlZj02NzIsOTQzIFNlbGVjdGVkPTB4RjM0RUJCQTUKICAgICAgRG9ja05vZGUgICAgICBJRD0weDAwMDAwMDA2IFBhcmVudD0weDAwMDAwMDAzIFNpemVSZWY9OTYyLDk0MyBTcGxpdD1ZCiAgICAgICAgRG9ja05vZGUgICAgSUQ9MHgwMDAwMDAwNyBQYXJlbnQ9MHgwMDAwMDAwNiBTaXplUmVmPTUyNSw3NDggU3BsaXQ9WCBTZWxlY3RlZD0weDc2MzgxNkFDCiAgICAgICAgICBEb2NrTm9kZSAgSUQ9MHgwMDAwMDAwOSBQYXJlbnQ9MHgwMDAwMDAwNyBTaXplUmVmPTgzMCw3NzcgU2VsZWN0ZWQ9MHgzOTZGOTk1MwogICAgICAgICAgRG9ja05vZGUgIElEPTB4MDAwMDAwMEEgUGFyZW50PTB4MDAwMDAwMDcgU2l6ZVJlZj04MDQsNzc3IENlbnRyYWxOb2RlPTEgU2VsZWN0ZWQ9MHg3NjM4MTZBQwogICAgICAgIERvY2tOb2RlICAgIElEPTB4MDAwMDAwMDggUGFyZW50PTB4MDAwMDAwMDYgU2l6ZVJlZj01MjUsMTkzIFNlbGVjdGVkPTB4Nzg4QzQ2NjIKICBEb2NrTm9kZSAgICAgICAgICBJRD0weDAwMDAwMDBDIFBhcmVudD0weDE2MEIxODlGIFNpemVSZWY9MzI0LDk0MyBTZWxlY3RlZD0weDBBMzVFRkE2Cgo=");
+			var __shadered_settings = base64ToArrayBuffer("W2dlbmVyYWxdCnRoZW1lPUxpZ2h0CmF1dG9lcnJvcj0xCnRvb2xiYXI9MApsb2c9MApwaXBlbG9nc3Rlcm1pbmFsPTAKcmVvcGVuc2hhZGVycz0xCm9wZW5zaGFkZXJzZGJsY2xrPTEKaXRlbXByb3BzZGJsY2xrPTEKc2VsZWN0aXRlbWRibGNsaz0xCmF1dG9yZWNvbXBpbGU9MQphdXRvdW5pZm9ybXM9MQphdXRvdW5pZm9ybXNwaW49MQphdXRvdW5pZm9ybXNmdW5jdGlvbj0xCmF1dG91bmlmb3Jtc2RlbGV0ZT0xCnRlbXBsYXRlPT9lbXB0eQpmb250PWRhdGEvTm90b1NhbnMudHRmCmZvbnRzaXplPTIwCmF1dG9zY2FsZT0wCnVpc2NhbGU9MQpobHNsZXh0PWhsc2wKdmtleHQ9dmsKcGxleHQ9CltwcmV2aWV3XQpwYXVzZWRvbnN0YXJ0dXA9MApzd2l0Y2hsZWZ0cmlnaHRjbGljaz0wCmhpZGVtZW51cGVyZm1vZGU9MQpib3VuZGluZ2JveD0xCmdpem1vPTEKZ2l6bW9yb3RhdWk9MQpnaXptb3NuYXB0cmFucz0wCmdpem1vc25hcHNjYWxlPTAKZ2l6bW9zbmFwcm90YT0wCnByb3BlcnR5cGljaz0xCnN0YXR1c2Jhcj0wCltlZGl0b3JdCnNtYXJ0cHJlZD0xCmFjdGl2ZXNtYXJ0cHJlZD0xCmZvbnQ9ZGF0YS9pbmNvbnNvbGF0YS50dGYKZm9udHNpemU9MjAKd2hpdGVzcGFjZT0wCmhpZ2hsaWdodGxpbmU9MQpsaW5lbnVtYmVycz0xCmhvcml6c2Nyb2xsPTEKc3RhdHVzYmFyPTAKYXV0b2JyYWNlPTEKc21hcnRpbmRlbnQ9MQphdXRvaW5kZW50b25wYXN0ZT0wCmluc2VydHNwYWNlPTAKdGFic2l6ZT00CmZ1bmN0b29sdGlwcz0xCnN5bnRheGhpZ2hsaWdodGluZz0xCnNjcm9sbGJhcm1hcmtlcnM9MQpbZGVidWddCnZhbHVlc29uaG92ZXI9MQphdXRvZmV0Y2g9MQpwaXhlbG91dGxpbmU9MQpwcmltaXRpdmVvdXRsaW5lPTEKW3BsdWdpbnNdCm5vdGxvYWRlZD0K");
+			var __shadered_shortcuts = base64ToArrayBuffer("Q29kZVVJLkNvbXBpbGUgRjUNCkNvZGVVSS5TYXZlIENUUkwgUw0KQ29kZVVJLlN3aXRjaFZpZXcgQUxUIEYyDQpDb2RlVUkuVG9nZ2xlU3RhdHVzYmFyIENUUkwgU0hJRlQgRjINCkVkaXRvci5BdXRvY29tcGxldGVEb3duIERvd24NCkVkaXRvci5BdXRvY29tcGxldGVPcGVuIENUUkwgU3BhY2UNCkVkaXRvci5BdXRvY29tcGxldGVTZWxlY3QgVGFiDQpFZGl0b3IuQXV0b2NvbXBsZXRlU2VsZWN0QWN0aXZlIFJldHVybg0KRWRpdG9yLkF1dG9jb21wbGV0ZVVwIFVwDQpFZGl0b3IuQmFja3dhcmREZWxldGUgQmFja3NwYWNlDQpFZGl0b3IuQmFja3dhcmREZWxldGVXb3JkIENUUkwgQmFja3NwYWNlDQpFZGl0b3IuQ29weSBDVFJMIEMNCkVkaXRvci5DdXQgQ1RSTCBYDQpFZGl0b3IuRGVidWdCcmVha3BvaW50IEY5DQpFZGl0b3IuRGVidWdDb250aW51ZSBGNQ0KRWRpdG9yLkRlYnVnSnVtcEhlcmUgQ1RSTCBBTFQgSA0KRWRpdG9yLkRlYnVnU3RlcCBGMTANCkVkaXRvci5EZWJ1Z1N0ZXBJbnRvIEYxMQ0KRWRpdG9yLkRlYnVnU3RlcE91dCBTSElGVCBGMTENCkVkaXRvci5EZWJ1Z1N0b3AgU0hJRlQgRjUNCkVkaXRvci5EZWxldGVMZWZ0IFNISUZUIEJhY2tzcGFjZQ0KRWRpdG9yLkRlbGV0ZVJpZ2h0IFNISUZUIERlbGV0ZQ0KRWRpdG9yLkZpbmQgQ1RSTCBGDQpFZGl0b3IuRmluZE5leHQgRjMNCkVkaXRvci5Gb3J3YXJkRGVsZXRlIERlbGV0ZQ0KRWRpdG9yLkZvcndhcmREZWxldGVXb3JkIENUUkwgRGVsZXRlDQpFZGl0b3IuSW5kZW50IFRhYg0KRWRpdG9yLk1vdmVCb3R0b20gQ1RSTCBFbmQNCkVkaXRvci5Nb3ZlRG93biBEb3duDQpFZGl0b3IuTW92ZURvd25CbG9jayBQYWdlRG93bg0KRWRpdG9yLk1vdmVFbmRMaW5lIEVuZA0KRWRpdG9yLk1vdmVMZWZ0IExlZnQNCkVkaXRvci5Nb3ZlUmlnaHQgUmlnaHQNCkVkaXRvci5Nb3ZlU3RhcnRMaW5lIEhvbWUNCkVkaXRvci5Nb3ZlVG9wIENUUkwgSG9tZQ0KRWRpdG9yLk1vdmVVcCBVcA0KRWRpdG9yLk1vdmVVcEJsb2NrIFBhZ2VVcA0KRWRpdG9yLk1vdmVXb3JkTGVmdCBDVFJMIExlZnQNCkVkaXRvci5Nb3ZlV29yZFJpZ2h0IENUUkwgUmlnaHQNCkVkaXRvci5OZXdMaW5lIFJldHVybg0KRWRpdG9yLk92ZXJ3cml0ZUN1cnNvciBJbnNlcnQNCkVkaXRvci5QYXN0ZSBDVFJMIFYNCkVkaXRvci5SZWRvIENUUkwgWQ0KRWRpdG9yLlJlcGxhY2UgQ1RSTCBIDQpFZGl0b3IuU2VsZWN0QWxsIENUUkwgQQ0KRWRpdG9yLlNlbGVjdEJvdHRvbSBDVFJMIFNISUZUIEVuZA0KRWRpdG9yLlNlbGVjdERvd24gU0hJRlQgRG93bg0KRWRpdG9yLlNlbGVjdERvd25CbG9jayBTSElGVCBQYWdlRG93bg0KRWRpdG9yLlNlbGVjdEVuZExpbmUgU0hJRlQgRW5kDQpFZGl0b3IuU2VsZWN0TGVmdCBTSElGVCBMZWZ0DQpFZGl0b3IuU2VsZWN0UmlnaHQgU0hJRlQgUmlnaHQNCkVkaXRvci5TZWxlY3RTdGFydExpbmUgU0hJRlQgSG9tZQ0KRWRpdG9yLlNlbGVjdFRvcCBDVFJMIFNISUZUIEhvbWUNCkVkaXRvci5TZWxlY3RVcCBTSElGVCBVcA0KRWRpdG9yLlNlbGVjdFVwQmxvY2sgU0hJRlQgUGFnZVVwDQpFZGl0b3IuU2VsZWN0V29yZExlZnQgQ1RSTCBTSElGVCBMZWZ0DQpFZGl0b3IuU2VsZWN0V29yZFJpZ2h0IENUUkwgU0hJRlQgUmlnaHQNCkVkaXRvci5VbmRvIENUUkwgWg0KRWRpdG9yLlVuaW5kZW50IFNISUZUIFRhYg0KR2l6bW8uUG9zaXRpb24gQ1RSTCBHIFANCkdpem1vLlJvdGF0aW9uIENUUkwgRyBSDQpHaXptby5TY2FsZSBDVFJMIEcgUw0KUGx1Z2luLkdJRkNhcHR1cmUuU3RhcnRTdG9wIENUUkwgU0hJRlQgUA0KUGx1Z2luLlRlc3RQbHVnaW4uU2hvcnRjdXQxIENUUkwgU0hJRlQgTw0KUHJldmlldy5EZWxldGUgRGVsZXRlDQpQcmV2aWV3LkR1cGxpY2F0ZSBTSElGVCBEDQpQcmV2aWV3LkluY3JlYXNlVGltZSBDVFJMIFJpZ2h0DQpQcmV2aWV3LkluY3JlYXNlVGltZUZhc3QgQ1RSTCBTSElGVCBSaWdodA0KUHJldmlldy5TYXZlSW1hZ2UgQ1RSTCBSDQpQcmV2aWV3LlNlbGVjdEFsbCBTSElGVCBBDQpQcmV2aWV3LlRvZ2dsZU1vdXNlTG9jayBDVFJMIFNISUZUIE4NClByZXZpZXcuVG9nZ2xlTW91c2VWaXNpYmlsaXR5IENUUkwgU0hJRlQgTQ0KUHJldmlldy5Ub2dnbGVQYXVzZSBTcGFjZQ0KUHJldmlldy5Ub2dnbGVTdGF0dXNiYXIgQ1RSTCBTSElGVCBGMw0KUHJldmlldy5Ub2dnbGVUaW1lUGF1c2UgQ1RSTCBTSElGVCBUDQpQcmV2aWV3LlVuc2VsZWN0IENUUkwgU0hJRlQgRGVsZXRlDQpQcm9qZWN0Lk5ldyBDVFJMIE4gTg0KUHJvamVjdC5OZXdBdWRpbyBDVFJMIE4gQQ0KUHJvamVjdC5OZXdCdWZmZXIgQ1RSTCBOIEINClByb2plY3QuTmV3Q3ViZU1hcCBDVFJMIE4gQw0KUHJvamVjdC5OZXdSZW5kZXJUZXh0dXJlIENUUkwgTiBSDQpQcm9qZWN0Lk5ld1NoYWRlclBhc3MgQ1RSTCBOIFANClByb2plY3QuTmV3VGV4dHVyZSBDVFJMIE4gVA0KUHJvamVjdC5PcGVuIENUUkwgTw0KUHJvamVjdC5SZWJ1aWxkIENUUkwgRjUNClByb2plY3QuU2F2ZSBDVFJMIFMNClByb2plY3QuU2F2ZUFzIENUUkwgUCBBDQpXaW5kb3cuRXhpdCBBTFQgRjQNCldpbmRvdy5GdWxsc2NyZWVuIEFMVCBSZXR1cm4NCldvcmtzcGFjZS5IaWRlRWRpdG9yIENUUkwgVyBFDQpXb3Jrc3BhY2UuSGlkZVBpbm5lZCBDVFJMIFcgTg0KV29ya3NwYWNlLkhpZGVQaXBlbGluZSBDVFJMIFcgTA0KV29ya3NwYWNlLkhpZGVQcmV2aWV3IENUUkwgVyBQDQpXb3Jrc3BhY2UuSGlkZVByb3BlcnRpZXMgQ1RSTCBXIFINCldvcmtzcGFjZS5PcHRpb25zIENUUkwgVyBPDQpXb3Jrc3BhY2UuUGVyZm9ybWFuY2VNb2RlIEYNCldvcmtzcGFjZS5Ub2dnbGVUb29sYmFyIENUUkwgU0hJRlQgRjENCg==");
+			var __shadered_guidat = base64ToArrayBuffer("AQEAAQEBAQEBAQEBAQ==");
+			function loadWorkspace() {
+				Module.FS.writeFile('/data/workspace.dat', __shadered_workspace);
+			}
+			function loadSettings() {
+				Module.FS.writeFile('/data/settings.ini', __shadered_settings);
+			}
+			function loadShortcuts() {
+				Module.FS.writeFile('/data/shortcuts.kb', __shadered_shortcuts);
+			}
+			function loadGUI() {
+				Module.FS.writeFile('/data/gui.dat', __shadered_guidat);
+			}
+			function loadProject() {
+Module.FS.writeFile('/project/project.sprj', base64ToArrayBuffer("PD94bWwgdmVyc2lvbj0iMS4wIj8+Cjxwcm9qZWN0IHZlcnNpb249IjIiPgoJPHBpcGVsaW5lPgoJCTxwYXNzIG5hbWU9Ik1haW4iIHR5cGU9InNoYWRlciIgYWN0aXZlPSJ0cnVlIj4KCQkJPHNoYWRlciB0eXBlPSJ2cyIgcGF0aD0ic2hhZGVycy9NYWluVlMuaGxzbCIgZW50cnk9Im1haW4iIC8+CgkJCTxzaGFkZXIgdHlwZT0icHMiIHBhdGg9InNoYWRlcnMvTWFpblBTLmhsc2wiIGVudHJ5PSJtYWluIiAvPgoJCQk8aW5wdXRsYXlvdXQ+CgkJCQk8aXRlbSB2YWx1ZT0iUG9zaXRpb24iIHNlbWFudGljPSJQT1NJVElPTiIgLz4KCQkJCTxpdGVtIHZhbHVlPSJOb3JtYWwiIHNlbWFudGljPSJOT1JNQUwiIC8+CgkJCQk8aXRlbSB2YWx1ZT0iVGV4Y29vcmQiIHNlbWFudGljPSJURVhDT09SRDAiIC8+CgkJCTwvaW5wdXRsYXlvdXQ+CgkJCTxyZW5kZXJ0ZXh0dXJlIC8+CgkJCTxpdGVtcz4KCQkJCTxpdGVtIG5hbWU9IlF1YWQiIHR5cGU9Imdlb21ldHJ5Ij4KCQkJCQk8dHlwZT5TY3JlZW5RdWFkTkRDPC90eXBlPgoJCQkJCTx3aWR0aD4xPC93aWR0aD4KCQkJCQk8aGVpZ2h0PjE8L2hlaWdodD4KCQkJCQk8ZGVwdGg+MTwvZGVwdGg+CgkJCQkJPHRvcG9sb2d5PlRyaWFuZ2xlTGlzdDwvdG9wb2xvZ3k+CgkJCQk8L2l0ZW0+CgkJCTwvaXRlbXM+CgkJCTxpdGVtdmFsdWVzIC8+CgkJCTx2YXJpYWJsZXM+CgkJCQk8dmFyaWFibGUgdHlwZT0iZmxvYXQyIiBuYW1lPSJ1UmVzb2x1dGlvbiIgc3lzdGVtPSJWaWV3cG9ydFNpemUiIC8+CgkJCQk8dmFyaWFibGUgdHlwZT0iZmxvYXQiIG5hbWU9InVUaW1lIiBzeXN0ZW09IlRpbWUiIC8+CgkJCTwvdmFyaWFibGVzPgoJCQk8bWFjcm9zIC8+CgkJPC9wYXNzPgoJPC9waXBlbGluZT4KCTxvYmplY3RzIC8+Cgk8Y2FtZXJhcyAvPgoJPHNldHRpbmdzPgoJCTxlbnRyeSB0eXBlPSJmaWxlIiBuYW1lPSJNYWluIiBzaGFkZXI9InZzIiAvPgoJCTxlbnRyeSB0eXBlPSJmaWxlIiBuYW1lPSJNYWluIiBzaGFkZXI9InBzIiAvPgoJCTxlbnRyeSB0eXBlPSJjYW1lcmEiIGZwPSJmYWxzZSI+CgkJCTxkaXN0YW5jZT43PC9kaXN0YW5jZT4KCQkJPHBpdGNoPjA8L3BpdGNoPgoJCQk8eWF3PjA8L3lhdz4KCQkJPHJvbGw+MDwvcm9sbD4KCQk8L2VudHJ5PgoJCTxlbnRyeSB0eXBlPSJjbGVhcmNvbG9yIiByPSIwIiBnPSIwIiBiPSIwIiBhPSIwIiAvPgoJCTxlbnRyeSB0eXBlPSJ1c2VhbHBoYSIgdmFsPSJmYWxzZSIgLz4KCTwvc2V0dGluZ3M+Cgk8cGx1Z2luZGF0YSAvPgo8L3Byb2plY3Q+Cg=="));
+Module.FS.writeFile('/project/shaders/MainPS.hlsl', base64ToArrayBuffer("Y2J1ZmZlciB2YXJzIDogcmVnaXN0ZXIoYjApCnsKCWZsb2F0MiB1UmVzb2x1dGlvbjsKCWZsb2F0IHVUaW1lOwp9OwoKZmxvYXQ0IG1haW4oZmxvYXQ0IGZyYWdDb29yZCA6IFNWX1BPU0lUSU9OKSA6IFNWX1RBUkdFVAp7CiAgICBmbG9hdDIgdXYgPSBmcmFnQ29vcmQueHkvdVJlc29sdXRpb247CiAgICByZXR1cm4gZmxvYXQ0KDAuNWYgKyAwLjVmKmNvcyh1VGltZSt1di55eHkpLCAxLjBmKTsKfQ=="));
+Module.FS.writeFile('/project/shaders/MainVS.hlsl', base64ToArrayBuffer("ZmxvYXQ0IG1haW4oZmxvYXQyIHBvcyA6IFBPU0lUSU9OKSA6IFNWX1BPU0lUSU9OCnsKCXJldHVybiBmbG9hdDQocG9zLCAwLjBmLCAxLjBmKTsKfQ=="));
+			}
+
+			
+			/************ FILE DRAG AND DROP ************/
+			var canvas = document.getElementById("canvas");
+			canvas.addEventListener('drop', function(e) {
+				e.preventDefault();
+				e.stopPropagation();
+
+
+				var files = e.dataTransfer.files;
+				for (var i = 0; i < files.length; i++)
+					handleTextureFile(files[i]);
+
+				return false;
+			}, false);
+			canvas.addEventListener('dragover', stopEvents, false);
+			canvas.addEventListener('dragleave', stopEvents, false);
+			canvas.addEventListener('dragstart', stopEvents, false);
+			
+
+
+			/********** PASTE **********/
+			document.onpaste = event => {
+				var paste = (event.clipboardData || window.clipboardData).getData('text');
+				Module.engine_SetClipboardText(paste);
+			};
+			document.onkeydown = function (e) {
+				e = e || window.event;//Get event
+
+				if (!e.ctrlKey) return;
+				
+				var code = e.which || e.keyCode;//Get key code
+
+				if (code != 86)
+					e.preventDefault();
+			};
+			
+
+
+			/************** JS API **************/
+			var __shadered_item = "";
+			var __shadered_item_action = 0;
+			function selectCubemapFace() {
+				fileDialogElement.accept = '.png,.jpg,.jpeg,.bmp,.tga';
+				fileDialogElement.multiple = false;
+				fileDialogElement.onchange = e => {
+					for (var i = 0; i < e.target.files.length; i++)
+						handleCubeFile(e.target.files[i]);
+				}
+				fileDialogElement.click();
+			}
+			function selectNewTextureFile() {
+				fileDialogElement.accept = '.png,.jpg,.jpeg,.bmp,.tga';
+				fileDialogElement.multiple = false;
+				fileDialogElement.onchange = e => {
+					for (var i = 0; i < e.target.files.length; i++)
+						handleSwitchTextureFile(e.target.files[i]);
+				}
+				fileDialogElement.click();
+			}
+			function selectBufferFile() {
+				fileDialogElement.accept = '.png,.jpg,.jpeg,.bmp,.tga,.txt,.buf';
+				fileDialogElement.multiple = false;
+				fileDialogElement.onchange = e => {
+					for (var i = 0; i < e.target.files.length; i++)
+						handleBufferFile(e.target.files[i]);
+				}
+				fileDialogElement.click();
+			}
+			function loadTexture() {
+				fileDialogElement.accept = '.png,.jpg,.jpeg,.bmp,.tga';
+				fileDialogElement.multiple = true;
+				fileDialogElement.onchange = e => {
+					for (var i = 0; i < e.target.files.length; i++)
+						handleTextureFile(e.target.files[i]);
+				}
+				fileDialogElement.click();
+			}
+			function compileRust(code) {
+				var data = new FormData();
+				data.set("code", code);
+
+				var request = new XMLHttpRequest();
+				request.open('POST', 'https://compiler.shadered.org/rust_compiler.php', false);  // i know sync requests are depracted but this is a temp solution i guess, idk how to implement this so that its async...
+				request.send(data);
+
+				return request.responseText;
+			}
+			function compileCXX(code) {
+				var data = new FormData();
+				data.set("code", code);
+
+				var request = new XMLHttpRequest();
+				request.open('POST', 'https://compiler.shadered.org/circle_compiler.php', false);  // i know sync requests are depracted but this is a temp solution i guess, idk how to implement this so that its async...
+				request.send(data);
+
+				return request.responseText;
+			}
+			function saveFile(localFilename, downloadName, mime) {
+				mime = mime || "application/octet-stream";
+
+				let content = Module.FS.readFile(localFilename);
+
+				var a = document.createElement('a');
+				a.download = downloadName;
+				a.href = URL.createObjectURL(new Blob([content], {type: mime}));
+				a.style.display = 'none';
+
+				document.body.appendChild(a);
+				a.click();
+				setTimeout(() => {
+					document.body.removeChild(a);
+					URL.revokeObjectURL(a.href);
+				}, 2000);
+			}
+			function copyTextToClipboard(text) {
+				if (!navigator.clipboard) {
+					fallbackCopyTextToClipboard(text);
+					return;
+				}
+				navigator.clipboard.writeText(text).then(function() {
+					// succcess
+				}, function(err) {
+					console.error('Failed to copy content to clipboard', err);
+				});
+			}
+			function uploadSettings(text, type) {
+				var req = new XMLHttpRequest();
+
+				if (type == "workspace")
+					req.open("POST", "/actions/update_workspace.php", true);
+				else if (type == "settings")
+					req.open("POST", "/actions/update_settings.php", true);
+				else if (type == "shortcuts")
+					req.open("POST", "/actions/update_shortcuts.php", true);
+
+				var blob = new Blob([text], {type: 'text/plain'});
+				
+				req.send(blob);
+
+				if (type == "workspace") {
+					var viewVector = Module.engine_GetViewStates();
+					var uint8Vector = new Uint8Array(new ArrayBuffer(viewVector.size()));
+					for (var i = 0; i < viewVector.size(); i++)
+						uint8Vector[i] = viewVector.get(i);
+
+					var guiReq = new XMLHttpRequest();
+					guiReq.open("POST", "/actions/update_guidat.php", true);
+
+					var guiBlob = new Blob([uint8Vector], {dataType: 'application/octet-stream'});
+
+					guiReq.send(guiBlob);
+				}
+			}
+			function upload(title, description, tags, is_public, placeholder_flag) {
+				var data = new FormData();
+
+				// shaders
+				var shaders = Module.engine_GetProjectShaderPaths();
+				for (var i = 0; i < shaders.size(); i++) {
+					var shaderPath = shaders.get(i);
+
+					var shaderContent = Module.FS.readFile("/project/" + shaderPath);
+					var shaderBlob = new Blob([shaderContent], {dataType: 'application/octet-stream'});
+					var shaderFile = new File([shaderBlob], shaderPath);
+
+					data.append('shaders[]', shaderFile);
+				}
+
+				// optimized shaders
+				Module.engine_SaveOptimizedShaders();
+				var optShaders = Module.engine_GetProjectOptimizedShaderPaths();
+				for (var i = 0; i < optShaders.size(); i++) {
+					var shaderPath = optShaders.get(i);
+					
+					var shaderContent = Module.FS.readFile("/project/" + shaderPath);
+					var shaderBlob = new Blob([shaderContent], {dataType: 'application/octet-stream'});
+					var shaderFile = new File([shaderBlob], shaderPath);
+
+					data.append('opt_shaders[]', shaderFile);
+				}
+				
+				// textures
+				var textures = Module.engine_GetProjectTexturePaths();
+				for (var i = 0; i < textures.size(); i++) {
+					var texturePath = textures.get(i);
+
+					var textureContent = Module.FS.readFile("/project/" + texturePath);
+					var textureBlob = new Blob([textureContent], {dataType: 'application/octet-stream'});
+					var textureFile = new File([textureBlob], texturePath);
+					
+					data.append('textures[]', textureFile);
+				}
+				
+				// buffers
+				Module.engine_SaveBuffers();
+				var buffers = Module.engine_GetProjectBufferPaths();
+				for (var i = 0; i < buffers.size(); i++) {
+					var bufferPath = buffers.get(i);
+
+					var bufferContent = Module.FS.readFile("/project/" + bufferPath);
+					var bufferBlob = new Blob([bufferContent], {dataType: 'application/octet-stream'});
+					var bufferFile = new File([bufferBlob], bufferPath);
+					
+					data.append('buffers[]', bufferFile);
+				}
+				
+				// project file
+				var projectContent = Module.FS.readFile("/project/project.sprj");
+				var projectBlob = new Blob([projectContent], {dataType: 'application/octet-stream'});
+				var projectFile = new File([projectBlob], "/project/project.sprj");
+				data.append('project', projectFile);
+
+				// thumbnail
+				var thumbnailContent = Module.FS.readFile("/temp/thumbnail0.png");
+				var thumbnailBlob = new Blob([thumbnailContent], {dataType: 'application/octet-stream'});
+				var thumbnailFile = new File([thumbnailBlob], "/temp/thumbnail0.png");
+				data.append('thumbnail', thumbnailFile);
+
+				// fork
+				var urlParams = new URLSearchParams(window.location.search);
+
+				// set info
+				data.set("title", title);
+				data.set("description", description);
+				data.set("tags", tags);
+				data.set("public", is_public);
+				if (urlParams.has("fork"))
+					data.set("fork", urlParams.get("fork"));
+
+				// upload
+				var req = new XMLHttpRequest();
+				req.responseType = 'text';
+				req.onload = function () {
+					if (req.readyState === req.DONE) {
+						if (req.status === 200) {
+							Module.engine_SetUploadStatus(req.responseText);
+						}
+					}
+				};
+				req.open("POST", "/actions/upload.php");
+				req.send(data);
+			}
+			function download() {
+				var zip = new JSZip();
+				
+				// shaders
+				zip.folder("shaders");
+				var shaders = Module.engine_GetProjectShaderPaths();
+				for (var i = 0; i < shaders.size(); i++) {
+					var shaderPath = shaders.get(i);
+
+					var shaderContent = Module.FS.readFile("/project/" + shaderPath);
+					zip.file(shaderPath, shaderContent);
+				}
+
+				// textures
+				var textures = Module.engine_GetProjectTexturePaths();
+				if (textures.size() > 0)
+					zip.folder("textures");
+				for (var i = 0; i < textures.size(); i++) {
+					var texturePath = textures.get(i);
+
+					var textureContent = Module.FS.readFile("/project/" + texturePath);
+					zip.file(texturePath, textureContent);
+				}
+				
+				// buffers
+				Module.engine_SaveBuffers();
+				var buffers = Module.engine_GetProjectBufferPaths();
+				if (buffers.size() > 0)
+					zip.folder("buffers");
+				for (var i = 0; i < buffers.size(); i++) {
+					var bufferPath = buffers.get(i);
+
+					var bufferContent = Module.FS.readFile("/project/" + bufferPath);
+					zip.file(bufferPath, bufferContent);
+				}
+				
+				// project file
+				var projectContent = Module.FS.readFile("/project/project.sprj");
+				zip.file("project.sprj", projectContent);
+
+				zip.generateAsync({type:"blob"})
+				.then(function(content) {
+					saveAs(content, "project.zip");
+				});
+			}
+		</script>
+		
+		<script type="text/javascript" src="/js/filesys.js"></script>
+		<script type="text/javascript" src="/js/jszip.min.js"></script>
+		<script type="text/javascript" src="/js/FileSaver.js"></script>
+		<script async="" type="text/javascript" src="app.js"></script>
+	
+</body></html>
